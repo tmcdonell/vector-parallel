@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, GADTs #-}
+{-# LANGUAGE GADTs #-}
 -- |
 -- Gang primitives based on Repa code by Ben Lippmeier, in turn based on DPH
 -- code by Roman Leschinskiy.
@@ -24,7 +24,7 @@ import Debug.Trace
 -- the gang to do work, write Req-uest values to its RVars.
 --
 data Gang where
-  Gang :: !Int -> [RVar Req] -> RVar Busy -> Gang
+  Gang :: Int -> [RVar Req] -> RVar Busy -> Gang
 
 instance Show Gang where
   showsPrec p (Gang n _ _) = showString "<<"

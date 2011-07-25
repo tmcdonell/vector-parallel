@@ -33,7 +33,7 @@ map f vec
   | numCapabilities == 1        = U.map f vec
   | otherwise                   = U.create $
       do mvec <- M.unsafeNew len
-         gangST theGang (\tid -> uncurry (fill mvec) (split tid))
+         gangST theGang (uncurry (fill mvec) . split)
          return mvec
     where
       len            = U.length vec
@@ -80,11 +80,26 @@ fold c z vec
 -- The same restrictions apply to the reduction operator and neutral element.
 --
 {-# INLINE foldMap #-}
-foldMap :: (Unbox a, Unbox b) => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
-foldMap f c z = fold c z . map f
-  -- TLM 2011-07-25: The more explicit versions below are somehow a bit slower
+foldMap :: Unbox a => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
+foldMap f c z vec
+  | numCapabilities == 1        = U.foldl' (flip (c . f)) z vec
+  | otherwise                   = reduce segs vec
+    where
+      len  = U.length vec
+      segs = splitChunk numCapabilities len
 
+      reduce []     _ = z
+      reduce (s:ss) v =
+        let (xs, ys) = U.splitAt s v
+            x        = U.foldl' (flip (c . f)) z xs
+            y        = reduce ss ys
+        in
+        x `par` y `pseq` c x y
 
+--
+-- foldMap :: (Unbox a, Unbox b) => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
+-- foldMap f c z = fold c z . map f
+-- TLM 2011-07-25: The more explicit versions below are somehow a bit slower
 {--
 foldMap f c z vec
   | numCapabilities == 1        = U.foldl' c z . U.map f  $ vec
@@ -106,22 +121,6 @@ foldMap f c z vec
           (start, end) = split tid
           iter !i !a | i > end   = M.unsafeWrite mvec tid a
                      | otherwise = iter (i+1) (a `c` f (U.unsafeIndex vec i))
---}
-{--
-foldMap f c z vec
-  | numCapabilities == 1        = U.foldl' c z . U.map f  $ vec
-  | otherwise                   = reduce segs vec
-    where
-      len  = U.length vec
-      segs = splitChunk numCapabilities len
-
-      reduce []     _ = z
-      reduce (s:ss) v =
-        let (xs, ys) = U.splitAt s v
-            x        = U.foldl' c z (U.map f xs) -- will fuse
-            y        = reduce ss ys
-        in
-        x `par` y `pseq` c x y
 --}
 
 

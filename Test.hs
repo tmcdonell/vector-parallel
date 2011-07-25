@@ -87,7 +87,7 @@ main =
 --    print . P.fold max (1,1) . P.map hailstone $ v1
 
     {--}
-    v2 <- randomVector 5000000
+    v2 <- randomVector 1000000
     ok <- runTests [("map",     prop_map)
                    ,("fold",    prop_fold)
                    ,("foldMap", prop_foldMap) ]
