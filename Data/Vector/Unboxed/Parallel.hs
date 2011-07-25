@@ -11,7 +11,7 @@
 
 module Data.Vector.Unboxed.Parallel (
 
-  map, fold, mapFold
+  map, fold, foldMap
 
 ) where
 
@@ -79,14 +79,14 @@ fold c z vec
 -- | A combination of 'map' followed by 'fold', but computed more efficiently.
 -- The same restrictions apply to the reduction operator and neutral element.
 --
-{-# INLINE mapFold #-}
-mapFold :: (Unbox a, Unbox b) => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
-mapFold f c z = fold c z . map f
+{-# INLINE foldMap #-}
+foldMap :: (Unbox a, Unbox b) => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
+foldMap f c z = fold c z . map f
   -- TLM 2011-07-25: The more explicit versions below are somehow a bit slower
 
 
 {--
-mapFold f c z vec
+foldMap f c z vec
   | numCapabilities == 1        = U.foldl' c z . U.map f  $ vec
   | otherwise                   = U.foldl' c z $ U.create $
       do mvec <- M.unsafeNew pieces
@@ -108,7 +108,7 @@ mapFold f c z vec
                      | otherwise = iter (i+1) (a `c` f (U.unsafeIndex vec i))
 --}
 {--
-mapFold f c z vec
+foldMap f c z vec
   | numCapabilities == 1        = U.foldl' c z . U.map f  $ vec
   | otherwise                   = reduce segs vec
     where
