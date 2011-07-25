@@ -1,0 +1,49 @@
+Name:                   vector-parallel
+Version:                0.1
+Synopsis:               Parallel evaluation for unboxed vectors
+Description:            Parallel evaluation for unboxed vectors
+License:                BSD3
+License-file:           LICENSE
+Author:                 Trevor L. McDonell <tmcdonell@cse.unsw.edu.au>
+Maintainer:             Trevor L. McDonell <tmcdonell@cse.unsw.edu.au>
+Category:               Control
+Build-type:             Simple
+Cabal-version:          >= 1.8
+
+Flag test
+  Description:          build test program
+  Default:              False
+
+Library
+  Exposed-modules:      Data.Vector.Unboxed.Parallel
+  Other-modules:        Data.Vector.Internal.Gang
+
+  Build-depends:        base            >= 3.0 && < 5.0,
+                        parallel        == 3.1.*,
+                        vector          == 0.7.*
+
+Executable vector-parallel-test
+  if !flag(test)
+    Buildable:          False
+
+  main-is:              Test.hs
+  build-depends:        vector-parallel == 0.1.*,
+                        base            >= 3.0 && < 5.0,
+                        criterion       == 0.5.*,
+                        deepseq         == 1.1.*,
+                        parallel        == 3.1.*,
+                        mwc-random      == 0.8.*,
+                        QuickCheck      == 2.4.*,
+                        vector          == 0.7.*
+
+  ghc-options:          -threaded
+                        -eventlog
+                        -O2
+                        -fllvm
+                        -optlo-O3
+
+  if impl(ghc >= 7.0)
+    ghc-options:        -rtsopts
+
+  ghc-prof-options:     -auto-all
+
