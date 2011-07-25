@@ -36,7 +36,8 @@ Executable vector-parallel-test
                         QuickCheck      == 2.4.*,
                         vector          == 0.7.*
 
-  ghc-options:          -threaded
+  ghc-options:          -Wall
+                        -threaded
                         -eventlog
                         -O2
                         -fllvm

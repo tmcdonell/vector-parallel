@@ -81,20 +81,24 @@ test (name, prop) = printf "%-30s: " name >> quickCheckResult prop
 
 main :: IO ()
 main =
-  let n   = 100000
-      v1 = U.enumFromN 2 n
+  let v1 = U.enumFromN 2 100000
   in do
-    v2 <- randomVector n
+--    print . P.mapFold hailstone max (1,1)      $ v1
+--    print . P.fold max (1,1) . P.map hailstone $ v1
+
+    {--}
+    v2 <- randomVector 5000000
     ok <- runTests [("map",     prop_map)
                    ,("fold",    prop_fold)
                    ,("mapFold", prop_mapFold) ]
 
     when ok $
       defaultMain
-        [ bgroup "" [ bench "map/hailstone"      $ nf (P.map hailstone) v1
-                    , bench "fold/sum"           $ nf (P.fold (+) 0) v2
-                    , bench "mapFold/collatz"    $ nf (P.mapFold hailstone max (1,1)) v1
-                    , bench "fold . map/collatz" $ nf (P.fold max (1,1) . P.map hailstone) v1
+        [ bgroup "" [ bench "map/hailstone"     $ nf (P.map hailstone) v1
+                    , bench "fold/sum"          $ nf (P.fold (+) 0) v2
+                    , bench "mapFold/collatz"   $ nf (P.mapFold hailstone max (1,1)) v1
+                    , bench "fold.map/collatz"  $ nf (P.fold max (1,1) . P.map hailstone) v1
                     ]
         ]
+    --}
 

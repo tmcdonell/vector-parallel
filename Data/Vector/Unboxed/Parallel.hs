@@ -40,12 +40,10 @@ map f vec
       pieces         = numCapabilities
       (step, remain) = len `quotRem` pieces
 
-      {-# INLINE split #-}
       split i
         | i < remain = let offset = i * (step + 1)    in (offset, offset + step)
         | otherwise  = let offset = i * step + remain in (offset, offset + step - 1)
 
-      {-# INLINE fill #-}
       fill !mvec !start !end = go start
         where go !i | i > end   = return ()
                     | otherwise = M.unsafeWrite mvec i (f $ U.unsafeIndex vec i) >> go (i+1)
@@ -67,9 +65,8 @@ fold c z vec
   | otherwise                   = reduce segs vec
     where
       len  = U.length vec
-      segs = splitRange numCapabilities len
+      segs = splitChunk numCapabilities len
 
-      {-# INLINE reduce #-}
       reduce []     _ = z
       reduce (s:ss) v =
         let (xs, ys) = U.splitAt s v
@@ -84,14 +81,40 @@ fold c z vec
 --
 {-# INLINE mapFold #-}
 mapFold :: (Unbox a, Unbox b) => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
+mapFold f c z = fold c z . map f
+  -- TLM 2011-07-25: The more explicit versions below are somehow a bit slower
+
+
+{--
 mapFold f c z vec
-  | numCapabilities == 1        = U.foldl' c z (U.map f vec)
+  | numCapabilities == 1        = U.foldl' c z . U.map f  $ vec
+  | otherwise                   = U.foldl' c z $ U.create $
+      do mvec <- M.unsafeNew pieces
+         gangST theGang (reduce mvec)
+         return mvec
+    where
+      len            = U.length vec
+      pieces         = numCapabilities
+      (step, remain) = len `quotRem` pieces
+
+      split i
+        | i < remain = let offset = i * (step + 1)    in (offset, offset + step)
+        | otherwise  = let offset = i * step + remain in (offset, offset + step - 1)
+
+      reduce !mvec !tid = iter start z
+        where
+          (start, end) = split tid
+          iter !i !a | i > end   = M.unsafeWrite mvec tid a
+                     | otherwise = iter (i+1) (a `c` f (U.unsafeIndex vec i))
+--}
+{--
+mapFold f c z vec
+  | numCapabilities == 1        = U.foldl' c z . U.map f  $ vec
   | otherwise                   = reduce segs vec
     where
       len  = U.length vec
-      segs = splitRange numCapabilities len
+      segs = splitChunk numCapabilities len
 
-      {-# INLINE reduce #-}
       reduce []     _ = z
       reduce (s:ss) v =
         let (xs, ys) = U.splitAt s v
@@ -99,6 +122,7 @@ mapFold f c z vec
             y        = reduce ss ys
         in
         x `par` y `pseq` c x y
+--}
 
 
 -- Auxiliary
@@ -107,9 +131,21 @@ mapFold f c z vec
 -- Split a range into the given number of chunks as evenly as possible. Returns
 -- a list of the size of each successive chunk.
 --
-splitRange :: Int -> Int -> [Int]
-splitRange pieces len =
+splitChunk :: Int -> Int -> [Int]
+splitChunk pieces len =
   replicate remain (step + 1) ++ replicate (pieces - remain) step
   where
     (step, remain) = len `quotRem` pieces
+
+{--
+-- Split a range into a set of inclusive index chunks
+--
+splitRange :: Int -> Int -> [(Int,Int)]
+splitRange pieces len = P.map split [0 .. pieces-1]
+  where
+    (step, remain) = len `quotRem` pieces
+    split i
+      | i < remain = let offset = i * (step + 1)    in (offset, offset + step)
+      | otherwise  = let offset = i * step + remain in (offset, offset + step - 1)
+--}
 
