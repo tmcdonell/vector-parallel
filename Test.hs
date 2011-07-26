@@ -9,14 +9,11 @@ import qualified Data.Vector.Unboxed            as U
 import qualified Data.Vector.Unboxed.Parallel   as P
 
 import Data.Word
-import Control.DeepSeq
 import Control.Monad
 import Criterion.Main
 import System.Random.MWC
 import Test.QuickCheck
 import Text.Printf
-
-instance Unbox a => NFData (U.Vector a)
 
 
 {-# INLINE collatzLen #-}

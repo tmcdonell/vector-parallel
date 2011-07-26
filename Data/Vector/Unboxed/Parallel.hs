@@ -18,11 +18,14 @@ module Data.Vector.Unboxed.Parallel (
 import Prelude                                  hiding ( map )
 
 import GHC.Conc                                 ( numCapabilities )
+import Control.DeepSeq
 import Control.Parallel
 import Data.Vector.Unboxed                      ( Vector, Unbox )
 import Data.Vector.Internal.Gang
 import qualified Data.Vector.Unboxed            as U
 import qualified Data.Vector.Unboxed.Mutable    as M
+
+instance Unbox a => NFData (Vector a)
 
 
 -- | Map a function to each element of an array.
