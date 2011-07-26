@@ -27,16 +27,14 @@ import qualified Data.Vector                    as V
 
 
 instance NFData a => NFData (Vector a) where
-  rnf v = V.foldl' (\x y -> y `deepseq` x) () v
+  rnf = V.foldl' (flip deepseq) ()
 
 
 -- | Map a function to each element of an array.
 --
 {-# INLINE map #-}
 map :: NFData b => (a -> b) -> Vector a -> Vector b
-map f
-  = V.concat
-  . parSplit (V.map f)
+map f = V.concat . parSplit (V.map f)
 
 
 -- | Reduce an array to a single value. The combination function must be an
@@ -50,9 +48,7 @@ map f
 --
 {-# INLINE fold #-}
 fold :: NFData a => (a -> a -> a) -> a -> Vector a -> a
-fold c z
-  = foldl' c z
-  . parSplit (V.foldl' c z)
+fold c z = foldl' c z . parSplit (V.foldl' c z)
 
 
 -- | A combination of 'map' followed by 'fold', but computed more efficiently.
@@ -60,9 +56,7 @@ fold c z
 --
 {-# INLINE foldMap #-}
 foldMap :: NFData b => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
-foldMap f c z
-  = foldl' c z
-  . parSplit (V.foldl' (flip $ c . f) z)
+foldMap f c z = foldl' c z . parSplit (V.foldl' (flip $ c . f) z)
 
 {-# RULES
       "map/fold"        forall f c z. fold c z . map f = foldMap f c z
@@ -75,7 +69,6 @@ foldMap f c z
 -- Split a vector into chunks and apply the given operation to each section in
 -- parallel. Return the list of partial results.
 --
-{-# INLINE parSplit #-}
 parSplit :: NFData b => (Vector a -> b) -> Vector a -> [b]
 parSplit f vec
   = runPar . parMap f
@@ -89,7 +82,6 @@ parSplit f vec
 -- How many tasks per process should we aim for.  Higher numbers improve load
 -- balance but put more pressure on the scheduler.
 --
-{-# INLINE auto_partition_factor #-}
 auto_partition_factor :: Int
 auto_partition_factor = 4
 
@@ -97,7 +89,6 @@ auto_partition_factor = 4
 -- Split a range into the given number of chunks as evenly as possible. Returns
 -- a list of the size of each successive chunk.
 --
-{-# INLINE splitChunk #-}
 splitChunk :: Int -> Int -> [Int]
 splitChunk pieces len =
   replicate remain (step + 1) ++ replicate (pieces - remain) step
