@@ -67,9 +67,9 @@ foldMap :: (Vector v a, NFData b) => (a -> b) -> (b -> b -> b) -> b -> v a -> b
 foldMap f c z = foldl' c z . parSplit (G.foldl' (flip $ c . f) z)
 
 {-# RULES
-"map/map"       forall f g vec.     map f (map g vec)         = map (f . g) vec
-"fold/map"      forall f c z vec.   fold c z (map f vec)      = foldMap f c z vec
-"mapFold/map"   forall f g c z vec. foldMap f c z (map g vec) = foldMap (f . g) c z vec
+"map/map"       forall f g.     map f . map g         = map (f . g)
+"fold/map"      forall f c z.   fold c z . map f      = foldMap f c z
+"mapFold/map"   forall f g c z. foldMap f c z . map g = foldMap (f . g) c z
   #-}
 
 

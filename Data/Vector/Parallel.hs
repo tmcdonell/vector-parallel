@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module      : Data.Vector.Parallel
 -- Copyright   : [2011] Trevor L. McDonell
@@ -15,6 +14,7 @@ module Data.Vector.Parallel (
 
 ) where
 
+import Prelude                                  hiding ( map )
 import Control.DeepSeq                          ( NFData )
 import Data.Vector                              ( Vector )
 import qualified Data.Vector.Generic.Parallel   as G
@@ -47,4 +47,10 @@ fold = G.fold
 {-# INLINE foldMap #-}
 foldMap :: NFData b => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
 foldMap = G.foldMap
+
+{-# RULES
+"map/map"       forall f g.     map f . map g         = map (f . g)
+"fold/map"      forall f c z.   fold c z . map f      = foldMap f c z
+"mapFold/map"   forall f g c z. foldMap f c z . map g = foldMap (f . g) c z
+  #-}
 
