@@ -17,13 +17,11 @@ Flag test
 Library
   Exposed-modules:      Data.Vector.Parallel
                         Data.Vector.Unboxed.Parallel
-
-  Other-modules:        Data.Vector.Internal.Gang
+                        Data.Vector.Generic.Parallel
 
   Build-depends:        base            >= 3.0 && < 5.0,
                         deepseq         == 1.1.*,
                         monad-par       == 0.1.*,
-                        parallel        == 3.1.*,
                         vector          == 0.7.*
 
   ghc-options:          -Wall -fno-warn-orphans
@@ -34,15 +32,14 @@ Executable vector-parallel-test
     Buildable:          False
 
   main-is:              Test.hs
-  build-depends:        vector-parallel == 0.1.*,
-                        base            >= 3.0 && < 5.0,
+  build-depends:        base            >= 3.0 && < 5.0,
                         criterion       == 0.5.*,
                         deepseq         == 1.1.*,
-                        parallel        == 3.1.*,
                         monad-par       == 0.1.*,
                         mwc-random      == 0.8.*,
                         QuickCheck      == 2.4.*,
-                        vector          == 0.7.*
+                        vector          == 0.7.*,
+                        vector-parallel == 0.1.*
 
   ghc-options:          -threaded
                         -eventlog
