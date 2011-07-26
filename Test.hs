@@ -4,9 +4,11 @@
 
 module Main where
 
-import Data.Vector.Unboxed                      ( Vector, Unbox )
-import qualified Data.Vector.Unboxed            as U
-import qualified Data.Vector.Unboxed.Parallel   as P
+import qualified Data.Vector                    as V hiding ( map )
+import qualified Data.Vector.Parallel           as V
+
+import qualified Data.Vector.Unboxed            as U hiding ( map )
+import qualified Data.Vector.Unboxed.Parallel   as U
 
 import Data.Word
 import Control.Monad
@@ -27,10 +29,10 @@ hailstone :: Word32 -> (Int, Word32)
 hailstone n = (collatzLen 1 n, n)
 
 
-randomVector :: Int -> IO (Vector Float)
+randomVector :: Int -> IO (U.Vector Float)
 randomVector n
   = withSystemRandom
-  $ \gen -> uniformVector gen n :: IO (Vector Float)
+  $ \gen -> uniformVector gen n :: IO (U.Vector Float)
 
 
 --
@@ -47,19 +49,19 @@ prop_map :: Property
 prop_map =
   forAll (listOf (arbitrary `suchThat` (>0))) $ \xs ->
     let vec = U.fromList xs
-    in  U.toList (P.map hailstone vec) .==. map hailstone xs
+    in  U.toList (U.map hailstone vec) .==. map hailstone xs
 
 prop_fold :: Property
 prop_fold =
   forAll arbitrary $ \(xs :: [Int]) ->
     let vec = U.fromList xs
-    in  P.fold (+) 0 vec .==. sum xs
+    in  U.fold (+) 0 vec .==. sum xs
 
 prop_foldMap :: Property
 prop_foldMap =
   forAll (listOf (arbitrary `suchThat` (>0))) $ \xs ->
     let vec = U.fromList xs
-    in  P.foldMap hailstone max (1,1) vec .==. foldl max (1,1) (map hailstone xs)
+    in  U.foldMap hailstone max (1,1) vec .==. foldl max (1,1) (map hailstone xs)
 
 
 runTests :: Testable prop => [(String, prop)] -> IO Bool
@@ -78,24 +80,31 @@ test (name, prop) = printf "%-30s: " name >> quickCheckResult prop
 
 main :: IO ()
 main =
-  let v1 = U.enumFromN 2 100000
+  let u1 = U.enumFromN 2 100000
+      v1 = V.enumFromN 2 100000
   in do
---    print . P.foldMap hailstone max (1,1)      $ v1
---    print . P.fold max (1,1) . P.map hailstone $ v1
+--    print . U.foldMap hailstone max (1,1)      $ u1
+--    print . U.fold max (1,1) . U.map hailstone $ u1
 
     {--}
-    v2 <- randomVector 1000000
+    u2 <- randomVector 1000000
     ok <- runTests [("map",     prop_map)
                    ,("fold",    prop_fold)
                    ,("foldMap", prop_foldMap) ]
 
     when ok $
       defaultMain
-        [ bgroup "" [ bench "map/hailstone"     $ nf (P.map hailstone) v1
-                    , bench "fold/sum"          $ nf (P.fold (+) 0) v2
-                    , bench "foldMap/collatz"   $ nf (P.foldMap hailstone max (1,1)) v1
-                    , bench "fold.map/collatz"  $ nf (P.fold max (1,1) . P.map hailstone) v1
-                    ]
+        [ bgroup "boxed"   [ bench "map/hailstone"     $ nf (V.map hailstone) v1
+        --                   , bench "fold/sum"          $ nf (U.fold (+) 0) v2
+                           , bench "foldMap/collatz"   $ nf (V.foldMap hailstone max (1,1)) v1
+                           , bench "fold.map/collatz"  $ nf (V.fold max (1,1) . V.map hailstone) v1
+                           ]
+
+        , bgroup "unboxed" [ bench "map/hailstone"     $ nf (U.map hailstone) u1
+        --                   , bench "fold/sum"          $ nf (U.fold (+) 0) u2
+                           , bench "foldMap/collatz"   $ nf (U.foldMap hailstone max (1,1)) u1
+                           , bench "fold.map/collatz"  $ nf (U.fold max (1,1) . U.map hailstone) u1
+                           ]
         ]
     --}
 
