@@ -64,6 +64,10 @@ foldMap f c z
   = foldl' c z
   . parSplit (V.foldl' (flip $ c . f) z)
 
+{-# RULES
+      "map/fold"        forall f c z. fold c z . map f = foldMap f c z
+  #-}
+
 
 -- Auxiliary
 -- ---------
