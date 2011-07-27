@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module      : Data.Vector.Unboxed.Parallel
 -- Copyright   : [2011] Trevor L. McDonell
@@ -18,6 +19,10 @@ import Prelude                                  hiding ( map )
 import Control.DeepSeq                          ( NFData )
 import Data.Vector.Unboxed                      ( Vector, Unbox )
 import qualified Data.Vector.Generic.Parallel   as G
+
+-- Don't need to do anything to force an unboxed vector
+--
+instance Unbox a => NFData (Vector a)
 
 
 -- | Map a function to each element of an array, in parallel.

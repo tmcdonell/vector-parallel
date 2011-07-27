@@ -101,7 +101,7 @@ main =
                            ]
 
         , bgroup "unboxed" [ bench "map/hailstone"     $ nf (U.map hailstone) u1
-        --                   , bench "fold/sum"          $ nf (U.fold (+) 0) u2
+                           , bench "fold/sum"          $ nf (U.fold (+) 0) u2
                            , bench "foldMap/collatz"   $ nf (U.foldMap hailstone max (1,1)) u1
                            , bench "fold.map/collatz"  $ nf (U.fold max (1,1) . U.map hailstone) u1
                            ]

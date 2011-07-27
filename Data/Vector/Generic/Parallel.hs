@@ -1,6 +1,3 @@
-{-# LANGUAGE OverlappingInstances, IncoherentInstances #-}
-{-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module      : Data.Vector.Generic.Parallel
 -- Copyright   : [2011] Trevor L. McDonell
@@ -25,23 +22,13 @@ import Data.List                                ( mapAccumL, foldl' )
 import Data.Tuple                               ( swap )
 import GHC.Conc                                 ( numCapabilities )
 import Data.Vector.Generic                      ( Vector )
-import qualified Data.Vector.Unboxed            as U
 import qualified Data.Vector.Generic            as G
-
-
--- Don't need to do anything to force an unboxed vector, although the
--- requirement of incoherent/undecidable instances is not confidence inspiring.
---
-instance U.Unbox a => NFData (U.Vector a)
-
-instance (Vector v a, NFData a) => NFData (v a) where
-  rnf = G.foldl' (flip deepseq) ()
 
 
 -- | Map a function to each element of an array, in parallel.
 --
 {-# INLINE map #-}
-map :: (Vector v a, Vector v b, NFData b) => (a -> b) -> v a -> v b
+map :: (Vector v a, Vector v b, NFData (v b)) => (a -> b) -> v a -> v b
 map f = G.concat . parSplit (G.map f)
 
 

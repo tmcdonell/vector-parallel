@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module      : Data.Vector.Parallel
 -- Copyright   : [2011] Trevor L. McDonell
@@ -15,9 +16,13 @@ module Data.Vector.Parallel (
 ) where
 
 import Prelude                                  hiding ( map )
-import Control.DeepSeq                          ( NFData )
+import Control.DeepSeq
 import Data.Vector                              ( Vector )
+import qualified Data.Vector                    as V
 import qualified Data.Vector.Generic.Parallel   as G
+
+instance NFData a => NFData (Vector a) where
+  rnf = V.foldl' (flip deepseq) ()
 
 
 -- | Map a function to each element of an array, in parallel.
