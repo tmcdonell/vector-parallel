@@ -1,17 +1,17 @@
 Name:                   vector-parallel
 Version:                0.1
-Synopsis:               Parallel evaluation for unboxed vectors
-Description:            Parallel evaluation for unboxed vectors
+Synopsis:               Parallel evaluation for vectors
+Description:            Parallel evaluation for vectors
 License:                BSD3
 License-file:           LICENSE
 Author:                 Trevor L. McDonell <tmcdonell@cse.unsw.edu.au>
 Maintainer:             Trevor L. McDonell <tmcdonell@cse.unsw.edu.au>
 Category:               Control
 Build-type:             Simple
-Cabal-version:          >= 1.8
+Cabal-version:          >= 1.6
 
 Flag test
-  Description:          build test program
+  Description:          build a performance/test program
   Default:              False
 
 Library
@@ -32,23 +32,32 @@ Executable vector-parallel-test
     Buildable:          False
 
   main-is:              Test.hs
-  build-depends:        base            >= 3.0 && < 5.0,
+  other-modules:        Data.Vector.Parallel
+                        Data.Vector.Unboxed.Parallel
+                        Data.Vector.Generic.Parallel
+
+  if flag(test)
+    build-depends:      base            >= 3.0 && < 5.0,
                         criterion       == 0.5.*,
                         deepseq         == 1.1.*,
                         monad-par       == 0.1.*,
                         mwc-random      == 0.8.*,
                         QuickCheck      == 2.4.*,
-                        vector          == 0.7.*,
-                        vector-parallel == 0.1.*
+                        vector          == 0.7.*
 
   ghc-options:          -threaded
                         -eventlog
                         -O2
-                        -fllvm
-                        -optlo-O3
+--                        -fllvm
+--                        -optlo-O3
 
   if impl(ghc >= 7.0)
     ghc-options:        -rtsopts
 
   ghc-prof-options:     -auto-all
+
+
+source-repository head
+  type:                 git
+  location:             https://github.com/tmcdonell/vector-parallel
 
