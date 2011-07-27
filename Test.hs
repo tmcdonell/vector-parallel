@@ -2,7 +2,6 @@
 
 module Main where
 
-import qualified Data.Vector.Generic		as G
 import qualified Data.Vector.Parallel           as V
 import qualified Data.Vector.Unboxed.Parallel   as U
 import qualified Data.Vector                    as V hiding ( map )
@@ -27,10 +26,10 @@ hailstone :: Word32 -> (Int, Word32)
 hailstone n = (collatzLen 1 n, n)
 
 
-randomVector :: forall v a. (G.Vector v a, Variate a, Floating a) => Int -> IO (v a)
+randomVector :: Int -> IO (U.Vector Float)
 randomVector n
   = withSystemRandom
-  $ \gen -> G.replicateM n (uniformR (-1,1) gen :: IO a)
+  $ \gen -> U.replicateM n (uniformR (-1,1) gen :: IO Float)
 
 
 --
@@ -80,8 +79,8 @@ main =
   let u1 = U.enumFromN 2 100000
       v1 = V.enumFromN 2 100000
   in do
-    u2 <- randomVector 10000000 :: IO (U.Vector Float)
-    v2 <- randomVector 10000000 :: IO (V.Vector Float)
+    u2 <- randomVector 10000000
+    let v2 = V.convert u2
 
     -- derived from a common implementation, so just test the (slightly quicker)
     -- unboxed instantiations
