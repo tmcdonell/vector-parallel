@@ -34,9 +34,8 @@ map = G.map
 
 -- | Reduce an array to a single value. The combination function must be an
 -- associative operation, and the stating element must be neutral with respect
--- to this operator; i.e. the pair must form a monoid.
---
--- For example, @0@ is neutral with respect to @(+)@, as @0 + a = a@.
+-- to this operator; i.e. the pair must form a monoid. For example, @0@ is
+-- neutral with respect to @(+)@, as @0 + a = a@.
 --
 -- These restrictions are required to support efficient parallel evaluation, as
 -- the starting value may be used many times depending on the number of threads.
