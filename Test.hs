@@ -93,16 +93,18 @@ main =
     --
     when ok $
       defaultMain
-        [ bgroup "boxed"   [ bench "map/hailstone"     $ nf (V.map hailstone) v1
-                           , bench "fold/sum"          $ nf (V.fold (+) 0) v2
-                           , bench "foldMap/collatz"   $ nf (V.foldMap hailstone max (1,1)) v1
-                           , bench "fold.map/collatz"  $ nf (V.fold max (1,1) . V.map hailstone) v1
-                           ]
+        [ bgroup "boxed"
+            [ bench "map/hailstone"     $ nf (V.map hailstone) v1
+            , bench "fold/sum"          $ nf (V.fold (+) 0) v2
+            , bench "foldMap/collatz"   $ nf (V.foldMap hailstone max (1,1)) v1
+            , bench "fold.map/collatz"  $ nf (V.fold max (1,1) . V.map hailstone) v1
+            ]
 
-        , bgroup "unboxed" [ bench "map/hailstone"     $ nf (U.map hailstone) u1
-                           , bench "fold/sum"          $ nf (U.fold (+) 0) u2
-                           , bench "foldMap/collatz"   $ nf (U.foldMap hailstone max (1,1)) u1
-                           , bench "fold.map/collatz"  $ nf (U.fold max (1,1) . U.map hailstone) u1
-                           ]
+        , bgroup "unboxed"
+            [ bench "map/hailstone"     $ nf (U.map hailstone) u1
+            , bench "fold/sum"          $ nf (U.fold (+) 0) u2
+            , bench "foldMap/collatz"   $ nf (U.foldMap hailstone max (1,1)) u1
+            , bench "fold.map/collatz"  $ nf (U.fold max (1,1) . U.map hailstone) u1
+            ]
         ]
 

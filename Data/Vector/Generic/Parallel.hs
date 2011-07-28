@@ -10,7 +10,8 @@
 
 module Data.Vector.Generic.Parallel (
 
-  map, fold, foldMap
+  map, fold, foldMap,
+  map_, fold_, foldMap_
 
 ) where
 
@@ -42,21 +43,34 @@ map f = G.concat . parSplit (G.map f)
 --
 {-# INLINE fold #-}
 fold :: (Vector v a, NFData a) => (a -> a -> a) -> a -> v a -> a
-fold c z = foldl' c z . parSplit (G.foldl' c z)
+fold = foldMap id
 
 
--- | A combination of 'map' followed by 'fold', but computed more efficiently.
--- The same restrictions apply to the reduction operator and neutral element.
+-- | A combination of 'map' followed by 'fold'. The same restrictions apply to
+-- the reduction operator and neutral element.
 --
 {-# INLINE foldMap #-}
 foldMap :: (Vector v a, NFData b) => (a -> b) -> (b -> b -> b) -> b -> v a -> b
-foldMap f c z = foldl' c z . parSplit (G.foldl' (flip $ c . f) z)
+foldMap f c z = foldl' c z . parSplit (G.foldl' (flip (c . f)) z)
 
-{-# RULES
-"map/map"       forall f g.     map f . map g         = map (f . g)
-"fold/map"      forall f c z.   fold c z . map f      = foldMap f c z
-"mapFold/map"   forall f g c z. foldMap f c z . map g = foldMap (f . g) c z
-  #-}
+
+-- | Like 'map' but only head strict, not fully strict.
+--
+{-# INLINE map_ #-}
+map_ :: (Vector v a, Vector v b) => (a -> b) -> v a -> v b
+map_ f = G.concat . parSplit_ (G.map f)
+
+-- | Like 'fold' but only head strict, not fully strict.
+--
+{-# INLINE fold_ #-}
+fold_ :: Vector v a => (a -> a -> a) -> a -> v a -> a
+fold_ = foldMap_ id
+
+-- | Like 'foldMap' but only head strict, not fully strict.
+--
+{-# INLINE foldMap_ #-}
+foldMap_ :: Vector v a => (a -> b) -> (b -> b -> b) -> b -> v a -> b
+foldMap_ f c z = foldl' c z . parSplit_ (G.foldl' (flip (c . f)) z)
 
 
 -- Auxiliary
@@ -66,26 +80,47 @@ foldMap f c z = foldl' c z . parSplit (G.foldl' (flip $ c . f) z)
 -- parallel. Return the list of partial results.
 --
 parSplit :: (Vector v a, NFData b) => (v a -> b) -> v a -> [b]
-parSplit f vec
-  = runPar . parMap f
-  . snd . mapAccumL (\v -> swap . flip G.splitAt v) vec
-  $ splitChunk n l
-  where
-    n = auto_partition_factor * numCapabilities
-    l = G.length vec
+parSplit f = runPar . parMap f . splitVec
 
--- Split a range into the given number of chunks as evenly as possible. Returns
--- a list of the size of each chunk.
+-- Like 'parSplit', but the function applied to the vector is only head strict,
+-- not fully strict.
 --
-splitChunk :: Int -> Int -> [Int]
-splitChunk pieces len =
-  replicate remain (step + 1) ++ replicate (pieces - remain) step
+parSplit_ :: Vector v a => (v a -> b) -> v a -> [b]
+parSplit_ f = runPar . parMap_ f . splitVec
+
+pval_ :: a -> Par (IVar a)
+pval_ = spawn_ . return
+
+parMap_ :: (a -> b) -> [a] -> Par [b]
+parMap_ f xs = mapM (pval_ . f) xs >>= mapM get
+
+
+-- Split a vector into evenly sized chunks.
+--
+splitVec :: Vector v a => v a -> [v a]
+splitVec vec
+  = snd $ mapAccumL (\v -> swap . flip G.splitAt v) vec cut
   where
+    len            = G.length vec
+    pieces         = auto_partition_factor * numCapabilities
     (step, remain) = len `quotRem` pieces
+    cut            = replicate remain (step + 1) ++ replicate (pieces - remain) step
+
 
 -- How many tasks per process should we aim for.  Higher numbers improve load
 -- balance but put more pressure on the scheduler.
 --
 auto_partition_factor :: Int
 auto_partition_factor = 4
+
+
+{-# RULES
+"map/map"       forall f g.     map f . map g         = map (f . g)
+"fold/map"      forall f c z.   fold c z . map f      = foldMap f c z
+"mapFold/map"   forall f g c z. foldMap f c z . map g = foldMap (f . g) c z
+
+"map_/map_"     forall f g.     map_ f . map_ g         = map_ (f . g)
+"fold_/map_"    forall f c z.   fold_ c z . map_ f      = foldMap_ f c z
+"mapFold_/map_" forall f g c z. foldMap_ f c z . map_ g = foldMap_ (f . g) c z
+  #-}
 

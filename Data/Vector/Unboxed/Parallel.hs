@@ -11,7 +11,8 @@
 
 module Data.Vector.Unboxed.Parallel (
 
-  map, fold, foldMap
+  map, fold, foldMap,
+  map_, fold_, foldMap_
 
 ) where
 
@@ -45,16 +46,40 @@ fold :: (Unbox a, NFData a) => (a -> a -> a) -> a -> Vector a -> a
 fold = G.fold
 
 
--- | A combination of 'map' followed by 'fold', but computed more efficiently.
--- The same restrictions apply to the reduction operator and neutral element.
+-- | A combination of 'map' followed by 'fold'. The same restrictions apply to
+-- the reduction operator and neutral element.
 --
 {-# INLINE foldMap #-}
 foldMap :: (Unbox a, NFData b) => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
 foldMap = G.foldMap
 
+
+-- | Like 'map' but only head strict, not fully strict.
+--
+{-# INLINE map_ #-}
+map_ :: (Unbox a, Unbox b) => (a -> b) -> Vector a -> Vector b
+map_ = G.map_
+
+-- | Like 'fold' but only head strict, not fully strict.
+--
+{-# INLINE fold_ #-}
+fold_ :: Unbox a => (a -> a -> a) -> a -> Vector a -> a
+fold_ = G.fold_
+
+-- | Like 'foldMap' but only head strict, not fully strict.
+--
+{-# INLINE foldMap_ #-}
+foldMap_ :: Unbox a => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
+foldMap_ = G.foldMap_
+
+
 {-# RULES
 "map/map"       forall f g.     map f . map g         = map (f . g)
 "fold/map"      forall f c z.   fold c z . map f      = foldMap f c z
 "mapFold/map"   forall f g c z. foldMap f c z . map g = foldMap (f . g) c z
+
+"map_/map_"     forall f g.     map_ f . map_ g         = map_ (f . g)
+"fold_/map_"    forall f c z.   fold_ c z . map_ f      = foldMap_ f c z
+"mapFold_/map_" forall f g c z. foldMap_ f c z . map_ g = foldMap_ (f . g) c z
   #-}
 
