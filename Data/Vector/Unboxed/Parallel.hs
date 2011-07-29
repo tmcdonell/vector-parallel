@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module      : Data.Vector.Unboxed.Parallel
@@ -16,7 +17,6 @@ module Data.Vector.Unboxed.Parallel (
 
 ) where
 
-import Prelude                                  hiding ( map )
 import Control.DeepSeq                          ( NFData )
 import Data.Vector.Unboxed                      ( Vector, Unbox )
 import qualified Data.Vector.Generic.Parallel   as G
@@ -71,15 +71,4 @@ fold_ = G.fold_
 {-# INLINE foldMap_ #-}
 foldMap_ :: Unbox a => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
 foldMap_ = G.foldMap_
-
-
-{-# RULES
-"map/map"       forall f g.     map f . map g         = map (f . g)
-"fold/map"      forall f c z.   fold c z . map f      = foldMap f c z
-"mapFold/map"   forall f g c z. foldMap f c z . map g = foldMap (f . g) c z
-
-"map_/map_"     forall f g.     map_ f . map_ g         = map_ (f . g)
-"fold_/map_"    forall f c z.   fold_ c z . map_ f      = foldMap_ f c z
-"mapFold_/map_" forall f g c z. foldMap_ f c z . map_ g = foldMap_ (f . g) c z
-  #-}
 

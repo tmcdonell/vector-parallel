@@ -30,7 +30,7 @@ import qualified Data.Vector.Generic            as G
 --
 {-# INLINE map #-}
 map :: (Vector v a, Vector v b, NFData (v b)) => (a -> b) -> v a -> v b
-map f = G.concat . parSplit (G.map f)
+map f vec = splitjoin (G.map f) (G.concat) vec
 
 
 -- | Reduce an array to a single value. The combination function must be an
@@ -43,7 +43,7 @@ map f = G.concat . parSplit (G.map f)
 --
 {-# INLINE fold #-}
 fold :: (Vector v a, NFData a) => (a -> a -> a) -> a -> v a -> a
-fold = foldMap id
+fold c z vec = splitjoin (G.foldl' c z) (foldl' c z) vec
 
 
 -- | A combination of 'map' followed by 'fold'. The same restrictions apply to
@@ -51,30 +51,51 @@ fold = foldMap id
 --
 {-# INLINE foldMap #-}
 foldMap :: (Vector v a, NFData b) => (a -> b) -> (b -> b -> b) -> b -> v a -> b
-foldMap f c z = foldl' c z . parSplit (G.foldl' (flip (c . f)) z)
+foldMap f c z vec = splitjoin (G.foldl' (flip (c . f)) z) (foldl' c z) vec
 
 
 -- | Like 'map' but only head strict, not fully strict.
 --
 {-# INLINE map_ #-}
 map_ :: (Vector v a, Vector v b) => (a -> b) -> v a -> v b
-map_ f = G.concat . parSplit_ (G.map f)
+map_ f vec = splitjoin_ (G.map f) G.concat vec
 
 -- | Like 'fold' but only head strict, not fully strict.
 --
 {-# INLINE fold_ #-}
 fold_ :: Vector v a => (a -> a -> a) -> a -> v a -> a
-fold_ = foldMap_ id
+fold_ c z vec = splitjoin_ (G.foldl' c z) (foldl' c z) vec
 
 -- | Like 'foldMap' but only head strict, not fully strict.
 --
 {-# INLINE foldMap_ #-}
 foldMap_ :: Vector v a => (a -> b) -> (b -> b -> b) -> b -> v a -> b
-foldMap_ f c z = foldl' c z . parSplit_ (G.foldl' (flip (c . f)) z)
+foldMap_ f c z vec = splitjoin_ (G.foldl' (flip (c . f)) z) (foldl' c z) vec
 
 
 -- Auxiliary
 -- ---------
+
+-- Split a vector into chunks, apply the given operation to each section in
+-- parallel, then join the chunks to yield the final result.
+--
+{-# INLINE [1] splitjoin #-}
+splitjoin :: (Vector v a, NFData b) => (v a -> b) -> ([b] -> b) -> v a -> b
+splitjoin f g vec
+  | numCapabilities == 1 = f vec
+  | otherwise            = g (parSplit f vec)
+
+{-# INLINE [1] splitjoin_ #-}
+splitjoin_ :: Vector v a => (v a -> b) -> ([b] -> b) -> v a -> b
+splitjoin_ f g vec
+  | numCapabilities == 1 = f vec
+  | otherwise            = g (parSplit_ f vec)
+
+{-# RULES
+"split/join"    forall f g p x v. splitjoin  f p (splitjoin  g x v)     = splitjoin  (f . g) p v
+"split_/join_"  forall f g p x v. splitjoin_ f p (splitjoin_ g x v)     = splitjoin_ (f . g) p v
+  #-}
+
 
 -- Split a vector into chunks and apply the given operation to each section in
 -- parallel. Return the list of partial results.
@@ -94,7 +115,6 @@ pval_ = spawn_ . return
 parMap_ :: (a -> b) -> [a] -> Par [b]
 parMap_ f xs = mapM (pval_ . f) xs >>= mapM get
 
-
 -- Split a vector into evenly sized chunks.
 --
 splitVec :: Vector v a => v a -> [v a]
@@ -112,15 +132,4 @@ splitVec vec
 --
 auto_partition_factor :: Int
 auto_partition_factor = 4
-
-
-{-# RULES
-"map/map"       forall f g.     map f . map g         = map (f . g)
-"fold/map"      forall f c z.   fold c z . map f      = foldMap f c z
-"mapFold/map"   forall f g c z. foldMap f c z . map g = foldMap (f . g) c z
-
-"map_/map_"     forall f g.     map_ f . map_ g         = map_ (f . g)
-"fold_/map_"    forall f c z.   fold_ c z . map_ f      = foldMap_ f c z
-"mapFold_/map_" forall f g c z. foldMap_ f c z . map_ g = foldMap_ (f . g) c z
-  #-}
 

@@ -60,6 +60,12 @@ prop_foldMap =
     let vec = U.fromList xs
     in  U.foldMap hailstone max (1,1) vec .==. foldl max (1,1) (map hailstone xs)
 
+prop_fold_map :: Property
+prop_fold_map =
+  forAll (listOf (arbitrary `suchThat` (>0))) $ \xs ->
+    let vec = U.fromList xs
+    in  U.fold max (1,1) (U.map hailstone vec) .==. foldl max (1,1) (map hailstone xs)
+
 
 runTests :: Testable prop => [(String, prop)] -> IO Bool
 runTests xs = foldl (\r x -> r && ok x) True `fmap` mapM test xs
@@ -75,36 +81,36 @@ test (name, prop) = printf "%-30s: " name >> quickCheckResult prop
 -- main ------------------------------------------------------------------------
 --
 main :: IO ()
-main =
+main = do
+  u2 <- randomVector 100000
   let u1 = U.enumFromN 2 100000
       v1 = V.enumFromN 2 100000
-  in do
-    u2 <- randomVector 10000000
-    let v2 = V.convert u2
+      v2 = V.convert u2
 
-    -- derived from a common implementation, so just test the (slightly quicker)
-    -- unboxed instantiations
-    --
-    ok <- runTests [("map",     prop_map)
-                   ,("fold",    prop_fold)
-                   ,("foldMap", prop_foldMap) ]
+  -- derived from a common implementation, so just test the (slightly quicker)
+  -- unboxed instantiations
+  --
+  ok <- runTests [("map",             prop_map)
+                 ,("fold",            prop_fold)
+                 ,("foldMap",         prop_foldMap)
+                 ,("fold . map",      prop_fold_map) ]
 
-    -- now run performance tests for boxed and unboxed vectors
-    --
-    when ok $
-      defaultMain
-        [ bgroup "boxed"
-            [ bench "map/hailstone"     $ nf (V.map hailstone) v1
-            , bench "fold/sum"          $ nf (V.fold (+) 0) v2
-            , bench "foldMap/collatz"   $ nf (V.foldMap hailstone max (1,1)) v1
-            , bench "fold.map/collatz"  $ nf (V.fold max (1,1) . V.map hailstone) v1
-            ]
+  -- now run performance tests for boxed and unboxed vectors
+  --
+  when ok $
+    defaultMain
+      [ bgroup "boxed"
+          [ bench "map/hailstone"     $ nf (V.map hailstone) v1
+          , bench "fold/sum"          $ nf (V.fold (+) 0) v2
+          , bench "foldMap/collatz"   $ nf (V.foldMap hailstone max (1,1)) v1
+          , bench "fold.map/collatz"  $ nf (V.fold max (1,1) . V.map hailstone) v1
+          ]
 
-        , bgroup "unboxed"
-            [ bench "map/hailstone"     $ nf (U.map hailstone) u1
-            , bench "fold/sum"          $ nf (U.fold (+) 0) u2
-            , bench "foldMap/collatz"   $ nf (U.foldMap hailstone max (1,1)) u1
-            , bench "fold.map/collatz"  $ nf (U.fold max (1,1) . U.map hailstone) u1
-            ]
-        ]
+      , bgroup "unboxed"
+          [ bench "map/hailstone"     $ nf (U.map hailstone) u1
+          , bench "fold/sum"          $ nf (U.fold (+) 0) u2
+          , bench "foldMap/collatz"   $ nf (U.foldMap hailstone max (1,1)) u1
+          , bench "fold.map/collatz"  $ nf (U.fold max (1,1) . U.map hailstone) u1
+          ]
+      ]
 
