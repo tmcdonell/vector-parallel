@@ -24,13 +24,11 @@ Library
                         monad-par       == 0.1.*,
                         vector          == 0.7.*
 
-  ghc-options:          -Wall -fno-warn-orphans
+  ghc-options:          -O2 -Wall -fno-warn-orphans
+  ghc-prof-options:     -auto-all -caf-all
 
 
 Executable vector-parallel-test
-  if !flag(test)
-    Buildable:          False
-
   main-is:              Test.hs
   other-modules:        Data.Vector.Parallel
                         Data.Vector.Unboxed.Parallel
@@ -44,6 +42,8 @@ Executable vector-parallel-test
                         mwc-random      == 0.8.*,
                         QuickCheck      == 2.4.*,
                         vector          == 0.7.*
+  else
+    buildable:          False
 
   ghc-options:          -threaded
                         -eventlog
@@ -54,7 +54,7 @@ Executable vector-parallel-test
   if impl(ghc >= 7.0)
     ghc-options:        -rtsopts
 
-  ghc-prof-options:     -auto-all
+  ghc-prof-options:     -auto-all -caf-all
 
 
 source-repository head
