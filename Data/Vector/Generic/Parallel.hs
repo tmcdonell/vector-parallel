@@ -30,7 +30,7 @@ import qualified Data.Vector.Generic            as G
 --
 {-# INLINE map #-}
 map :: (Vector v a, Vector v b, NFData (v b)) => (a -> b) -> v a -> v b
-map f vec = splitjoin (G.map f) (G.concat) vec
+map f vec = splitjoin (G.map f) G.concat vec
 
 
 -- | Reduce an array to a single value. The combination function must be an
@@ -51,7 +51,9 @@ fold c z vec = splitjoin (G.foldl' c z) (foldl' c z) vec
 --
 {-# INLINE foldMap #-}
 foldMap :: (Vector v a, NFData b) => (a -> b) -> (b -> b -> b) -> b -> v a -> b
-foldMap f c z vec = splitjoin (G.foldl' (flip (c . f)) z) (foldl' c z) vec
+foldMap f c z vec = splitjoin (G.foldl' f' z) (foldl' c z) vec
+  where
+    f' k x = k `c` f x
 
 
 -- | Like 'map' but only head strict, not fully strict.
@@ -70,7 +72,9 @@ fold_ c z vec = splitjoin_ (G.foldl' c z) (foldl' c z) vec
 --
 {-# INLINE foldMap_ #-}
 foldMap_ :: Vector v a => (a -> b) -> (b -> b -> b) -> b -> v a -> b
-foldMap_ f c z vec = splitjoin_ (G.foldl' (flip (c . f)) z) (foldl' c z) vec
+foldMap_ f c z vec = splitjoin_ (G.foldl' f' z) (foldl' c z) vec
+  where
+    f' k x = k `c` f x
 
 
 -- Auxiliary
