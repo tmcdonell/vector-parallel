@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module      : Data.Vector.Parallel
 -- Copyright   : [2011] Trevor L. McDonell
@@ -11,25 +11,22 @@
 
 module Data.Vector.Parallel (
 
+  -- * Parallel collective operations
   map, fold, foldMap,
-  map_, fold_, foldMap_
+
+  -- * Re-exported for convenience
+  module Data.Vector
 
 ) where
 
-import Prelude                                  hiding ( map )
-import Control.DeepSeq
-import Data.Vector                              ( Vector )
-import qualified Data.Vector                    as V
+import Data.Vector                              hiding ( map )
 import qualified Data.Vector.Generic.Parallel   as G
-
-instance NFData a => NFData (Vector a) where
-  rnf = V.foldl' (flip deepseq) ()
 
 
 -- | Map a function to each element of an array, in parallel.
 --
 {-# INLINE map #-}
-map :: NFData b => (a -> b) -> Vector a -> Vector b
+map :: (a -> b) -> Vector a -> Vector b
 map = G.map
 
 
@@ -42,7 +39,7 @@ map = G.map
 -- the starting value may be used many times depending on the number of threads.
 --
 {-# INLINE fold #-}
-fold :: NFData a => (a -> a -> a) -> a -> Vector a -> a
+fold :: (a -> a -> a) -> a -> Vector a -> a
 fold = G.fold
 
 
@@ -50,25 +47,6 @@ fold = G.fold
 -- the reduction operator and neutral element.
 --
 {-# INLINE foldMap #-}
-foldMap :: NFData b => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
+foldMap :: (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
 foldMap = G.foldMap
-
-
--- | Like 'map' but only head strict, not fully strict.
---
-{-# INLINE map_ #-}
-map_ :: (a -> b) -> Vector a -> Vector b
-map_ = G.map_
-
--- | Like 'fold' but only head strict, not fully strict.
---
-{-# INLINE fold_ #-}
-fold_ :: (a -> a -> a) -> a -> Vector a -> a
-fold_ = G.fold_
-
--- | Like 'foldMap' but only head strict, not fully strict.
---
-{-# INLINE foldMap_ #-}
-foldMap_ :: (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
-foldMap_ = G.foldMap_
 

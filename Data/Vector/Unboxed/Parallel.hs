@@ -1,5 +1,4 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module      : Data.Vector.Unboxed.Parallel
 -- Copyright   : [2011] Trevor L. McDonell
@@ -12,24 +11,22 @@
 
 module Data.Vector.Unboxed.Parallel (
 
+  -- * Parallel collective operations
   map, fold, foldMap,
-  map_, fold_, foldMap_
+
+  -- * Re-exported for convenience
+  module Data.Vector.Unboxed
 
 ) where
 
-import Control.DeepSeq                          ( NFData )
-import Data.Vector.Unboxed                      ( Vector, Unbox )
+import Data.Vector.Unboxed                      hiding ( map )
 import qualified Data.Vector.Generic.Parallel   as G
-
--- Don't need to do anything to force an unboxed vector
---
-instance Unbox a => NFData (Vector a)
 
 
 -- | Map a function to each element of an array, in parallel.
 --
 {-# INLINE map #-}
-map :: (Unbox a, Unbox b, NFData b) => (a -> b) -> Vector a -> Vector b
+map :: (Unbox a, Unbox b) => (a -> b) -> Vector a -> Vector b
 map = G.map
 
 
@@ -42,7 +39,7 @@ map = G.map
 -- the starting value may be used many times depending on the number of threads.
 --
 {-# INLINE fold #-}
-fold :: (Unbox a, NFData a) => (a -> a -> a) -> a -> Vector a -> a
+fold :: Unbox a => (a -> a -> a) -> a -> Vector a -> a
 fold = G.fold
 
 
@@ -50,25 +47,6 @@ fold = G.fold
 -- the reduction operator and neutral element.
 --
 {-# INLINE foldMap #-}
-foldMap :: (Unbox a, NFData b) => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
+foldMap :: Unbox a => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
 foldMap = G.foldMap
-
-
--- | Like 'map' but only head strict, not fully strict.
---
-{-# INLINE map_ #-}
-map_ :: (Unbox a, Unbox b) => (a -> b) -> Vector a -> Vector b
-map_ = G.map_
-
--- | Like 'fold' but only head strict, not fully strict.
---
-{-# INLINE fold_ #-}
-fold_ :: Unbox a => (a -> a -> a) -> a -> Vector a -> a
-fold_ = G.fold_
-
--- | Like 'foldMap' but only head strict, not fully strict.
---
-{-# INLINE foldMap_ #-}
-foldMap_ :: Unbox a => (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
-foldMap_ = G.foldMap_
 

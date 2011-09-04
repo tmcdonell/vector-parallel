@@ -2,17 +2,23 @@
 
 module Main where
 
+import qualified Data.Vector                    as SV
+import qualified Data.Vector.Unboxed            as SU
 import qualified Data.Vector.Parallel           as V
 import qualified Data.Vector.Unboxed.Parallel   as U
-import qualified Data.Vector                    as V hiding ( map )
-import qualified Data.Vector.Unboxed            as U hiding ( map )
 
 import Data.Word
 import Control.Monad
+import Control.DeepSeq
 import Criterion.Main
 import System.Random.MWC
 import Test.QuickCheck
 import Text.Printf
+
+instance NFData a => NFData (V.Vector a) where
+  rnf = V.foldl' (flip deepseq) ()
+
+instance U.Unbox a => NFData (U.Vector a)
 
 
 {-# INLINE collatzLen #-}
@@ -26,6 +32,7 @@ hailstone :: Word32 -> (Int, Word32)
 hailstone n = (collatzLen 1 n, n)
 
 
+{-# NOINLINE randomVector #-}
 randomVector :: Int -> IO (U.Vector Float)
 randomVector n
   = withSystemRandom
@@ -80,9 +87,10 @@ test (name, prop) = printf "%-30s: " name >> quickCheckResult prop
 --
 -- main ------------------------------------------------------------------------
 --
+
 main :: IO ()
 main = do
-  u2 <- randomVector 100000
+  u2 <- randomVector 10000000
   let u1 = U.enumFromN 2 100000
       v1 = V.enumFromN 2 100000
       v2 = V.convert u2
@@ -99,18 +107,30 @@ main = do
   --
   when ok $
     defaultMain
-      [ bgroup "boxed"
-          [ bench "map/hailstone"     $ nf (V.map hailstone) v1
-          , bench "fold/sum"          $ nf (V.fold (+) 0) v2
-          , bench "foldMap/collatz"   $ nf (V.foldMap hailstone max (1,1)) v1
-          , bench "fold.map/collatz"  $ nf (V.fold max (1,1) . V.map hailstone) v1
+      [ bgroup "seq-boxed"
+          [ bench "map"         $ nf (SV.map hailstone) v1
+          , bench "fold"        $ nf (SV.foldl' (+) 0) v2
+          , bench "fold . map"  $ nf (SV.foldl' max (1,1) . SV.map hailstone) v1
           ]
 
-      , bgroup "unboxed"
-          [ bench "map/hailstone"     $ nf (U.map hailstone) u1
-          , bench "fold/sum"          $ nf (U.fold (+) 0) u2
-          , bench "foldMap/collatz"   $ nf (U.foldMap hailstone max (1,1)) u1
-          , bench "fold.map/collatz"  $ nf (U.fold max (1,1) . U.map hailstone) u1
+      , bgroup "seq-unboxed"
+          [ bench "map"         $ nf (SU.map hailstone) u1
+          , bench "fold"        $ nf (SU.foldl' (+) 0) u2
+          , bench "fold . map"  $ nf (SU.foldl' max (1,1) . SU.map hailstone) u1
+          ]
+
+      , bgroup "par-boxed"
+          [ bench "map"         $ nf (V.map hailstone) v1
+          , bench "fold"        $ nf (V.fold (+) 0) v2
+          , bench "fold.map"    $ nf (V.fold max (1,1) . V.map hailstone) v1
+          , bench "foldMap"     $ nf (V.foldMap hailstone max (1,1)) v1
+          ]
+
+      , bgroup "par-unboxed"
+          [ bench "map"         $ nf (U.map hailstone) u1
+          , bench "fold"        $ nf (U.fold (+) 0) u2
+          , bench "fold.map"    $ nf (U.fold max (1,1) . U.map hailstone) u1
+          , bench "foldMap"     $ nf (U.foldMap hailstone max (1,1)) u1
           ]
       ]
 

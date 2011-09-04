@@ -22,6 +22,7 @@ Library
   Build-depends:        base            >= 3.0 && < 5.0,
                         deepseq         == 1.1.*,
                         monad-par       == 0.1.*,
+                        pretty          >= 1.0 && < 1.2,
                         vector          == 0.7.*
 
   ghc-options:          -O2 -Wall -fno-warn-orphans
@@ -50,6 +51,7 @@ Executable vector-parallel-test
                         -O2
                         -fllvm
                         -optlo-O3
+                        -Wall
 
   if impl(ghc >= 7.0)
     ghc-options:        -rtsopts
