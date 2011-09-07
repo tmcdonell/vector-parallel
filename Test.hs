@@ -90,7 +90,7 @@ test (name, prop) = printf "%-30s: " name >> quickCheckResult prop
 
 main :: IO ()
 main = do
-  u2 <- randomVector 10000000
+  u2 <- randomVector 1000000
   let u1 = U.enumFromN 2 100000
       v1 = V.enumFromN 2 100000
       v2 = V.convert u2

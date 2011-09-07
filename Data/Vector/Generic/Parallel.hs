@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE CPP, BangPatterns, FlexibleContexts #-}
 -- |
 -- Module      : Data.Vector.Generic.Parallel
 -- Copyright   : [2011] Trevor L. McDonell
@@ -11,15 +11,22 @@
 
 module Data.Vector.Generic.Parallel (
 
-  -- * Parallel collective operations
-  map, fold, foldMap,
+  -- * Element-wise operations
+  map, imap, zip, zipWith,
+
+  -- * Reductions
+  fold, foldMap,
+
+  -- ** Specialised reductions
+  all, any, and, or, sum, product, maximum, minimum,
 
   -- * Re-exported for convenience
   module Data.Vector.Generic
 
 ) where
 
-import           Prelude                                hiding ( map )
+import           Prelude                                hiding (
+  map, zip, zipWith, all, any, and, or, sum, product, maximum, minimum )
 import qualified Prelude                                as P
 import           Text.PrettyPrint
 import           Control.Monad.Par
@@ -31,12 +38,41 @@ import qualified Data.Vector.Generic                    as G
 import qualified Data.Vector.Generic.Mutable            as M
 
 
+-- Mapping
+-- -------
+
 -- | Map a function to each element of an array, in parallel.
 --
 {-# INLINE map #-}
 map :: (Vector v a, Vector v b) => (a -> b) -> v a -> v b
-map f = unsplit . mapD f . split
+map f = unsplit . imapD (\_ x -> f x) . split
 
+-- | Apply a function to every element of a vector and its index.
+--
+{-# INLINE imap #-}
+imap :: (Vector v a, Vector v b) => (Int -> a -> b) -> v a -> v b
+imap f = unsplit . imapD f . split
+
+
+-- Zipping
+-- -------
+
+-- | Zip two vectors
+--
+{-# INLINE zip #-}
+zip :: (Vector v a, Vector v b, Vector v (a,b)) => v a -> v b -> v (a,b)
+zip = zipWith (,)
+
+-- | Zip two vectors with the given function.
+--
+{-# INLINE zipWith #-}
+zipWith :: (Vector v a, Vector v b, Vector v (a,b), Vector v c)
+        => (a -> b -> c) -> v a -> v b -> v c
+zipWith f x y = map (uncurry f) (G.zip x y)
+
+
+-- Reductions
+-- ----------
 
 -- | Reduce an array to a single value. The combination function must be an
 -- associative operation, and the stating element must be neutral with respect
@@ -48,16 +84,69 @@ map f = unsplit . mapD f . split
 --
 {-# INLINE fold #-}
 fold :: Vector v a => (a -> a -> a) -> a -> v a -> a
-fold c z = join c . foldD c z . split
-
+fold c z = join c . ifoldD (\_ x y -> c x y) z . split
 
 -- | A combination of 'map' followed by 'fold'. The same restrictions apply to
 -- the reduction operator and neutral element.
 --
 {-# INLINE foldMap #-}
 foldMap :: Vector v a => (a -> b) -> (b -> b -> b) -> b -> v a -> b
-foldMap f c z = join c . foldD f' z . split
-  where f' k x = k `c` f x
+foldMap f c z = join c . ifoldD f' z . split
+  where f' _ k x = k `c` f x
+
+
+-- Specialised reductions
+-- ----------------------
+
+-- | Check if all elements satisfy the predicate
+--
+{-# INLINE all #-}
+all :: Vector v a => (a -> Bool) -> v a -> Bool
+all p = foldMap p (&&) True
+
+-- | Check if any element satisfies the predicate
+--
+{-# INLINE any #-}
+any :: Vector v a => (a -> Bool) -> v a -> Bool
+any p = foldMap p (||) False
+
+-- | Check if all elements are True
+--
+{-# INLINE and #-}
+and :: Vector v Bool => v Bool -> Bool
+and = fold (&&) True
+
+-- | Check if any element is True
+--
+{-# INLINE or #-}
+or :: Vector v Bool => v Bool -> Bool
+or = fold (||) False
+
+-- | Compute the sum of the elements
+--
+{-# INLINE sum #-}
+sum :: (Vector v a, Num a) => v a -> a
+sum = fold (+) 0
+
+-- | Compute the product of the elements
+--
+{-# INLINE product #-}
+product :: (Vector v a, Num a) => v a -> a
+product = fold (*) 1
+
+-- | Yield the maximum element of a non-empty vector
+--
+{-# INLINE maximum #-}
+maximum :: (Vector v a, Ord a) => v a -> a
+maximum v | G.null v    = error "maximum: empty vector"
+          | otherwise   = fold max (G.unsafeHead v) (G.unsafeTail v)
+
+-- | Yield the minimum element of a non-empty vector
+--
+{-# INLINE minimum #-}
+minimum :: (Vector v a, Ord a) => v a -> a
+minimum v | G.null v    = error "minimum: empty vector"
+          | otherwise   = fold min (G.unsafeHead v) (G.unsafeTail v)
 
 
 --
@@ -115,9 +204,9 @@ instance Show a => Show (Dist a) where
 -- Map a function to each element of a distributed array, assigning one thread
 -- per array segment.
 --
-{-# INLINE_FUSE mapD #-}
-mapD :: (Vector v a, Vector v b) => (a -> b) -> Dist (v a) -> Dist (v b)
-mapD f (Dist s v) = unsafePerformIO $ do
+{-# INLINE_FUSE imapD #-}
+imapD :: (Vector v a, Vector v b) => (Int -> a -> b) -> Dist (v a) -> Dist (v b)
+imapD f (Dist s v) = unsafePerformIO $ do
   mv <- M.unsafeNew (G.length v)
   runPar (parMap (fill mv) s) `seq` Dist s `fmap` G.unsafeFreeze mv
   where
@@ -125,7 +214,7 @@ mapD f (Dist s v) = unsafePerformIO $ do
       where
         !end              = start + n
         go !i | i >= end  = return ()
-              | otherwise = M.unsafeWrite mv i (f $ G.unsafeIndex v i) >> go (i+1)
+              | otherwise = M.unsafeWrite mv i (f i $ G.unsafeIndex v i) >> go (i+1)
 
 
 -- Reduce each segment of a distributed array to a single value, given a
@@ -138,9 +227,9 @@ mapD f (Dist s v) = unsafePerformIO $ do
 -- we may want to revisit this once the API is expanded and there are later
 -- fusion stages.
 --
-{-# INLINE_FUSE foldD #-}
-foldD :: Vector v b => (a -> b -> a) -> a -> Dist (v b) -> Dist (V.Vector a)
-foldD c z (Dist s v) = unsafePerformIO $ do
+{-# INLINE_FUSE ifoldD #-}
+ifoldD :: Vector v b => (Int -> a -> b -> a) -> a -> Dist (v b) -> Dist (V.Vector a)
+ifoldD c z (Dist s v) = unsafePerformIO $ do
   mv <- M.unsafeNew (length s)
   v' <- runPar (parMap (reduce mv) s) `seq` G.unsafeFreeze mv
   return $ split v'
@@ -149,13 +238,13 @@ foldD c z (Dist s v) = unsafePerformIO $ do
       where
         !end                 = start + n
         go !i !a | i >= end  = M.unsafeWrite mv ix a
-                 | otherwise = go (i+1) (a `c` G.unsafeIndex v i)
+                 | otherwise = go (i+1) (c i a $ G.unsafeIndex v i)
 
 
 {-# RULES
 "split/unsplit" forall v.       split (unsplit v)       = v
-"mapD/mapD"     forall f g v.   mapD g (mapD f v)       = mapD (g . f) v
-"mapD/foldD"    forall f c z v. foldD c z (mapD f v)    = foldD (\k x -> k `c` f x) z v
+"imapD/imapD"   forall f g v.   imapD g (imapD f v)     = imapD (\i -> g i . f i) v
+"imapD/ifoldD"  forall f c z v. ifoldD c z (imapD f v)  = ifoldD (\i k x -> c i k (f i x)) z v
   #-}
 
 

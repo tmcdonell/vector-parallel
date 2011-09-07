@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module      : Data.Vector.Parallel
 -- Copyright   : [2011] Trevor L. McDonell
@@ -11,17 +10,30 @@
 
 module Data.Vector.Parallel (
 
-  -- * Parallel collective operations
-  map, fold, foldMap,
+  -- * Element-wise operations
+  map, imap, zip, zipWith,
+
+  -- * Reductions
+  fold, foldMap,
+
+  -- ** Specialised reductions
+  all, any, and, or, sum, product, maximum, minimum,
+
 
   -- * Re-exported for convenience
   module Data.Vector
 
 ) where
 
-import Data.Vector                              hiding ( map )
+import Prelude                                  ( Int, Bool, Num, Ord )
+import Data.Vector                              hiding (
+  map, imap, zip, zipWith,
+  all, any, and, or, sum, product, maximum, minimum )
 import qualified Data.Vector.Generic.Parallel   as G
 
+
+-- Mapping
+-- -------
 
 -- | Map a function to each element of an array, in parallel.
 --
@@ -29,6 +41,31 @@ import qualified Data.Vector.Generic.Parallel   as G
 map :: (a -> b) -> Vector a -> Vector b
 map = G.map
 
+-- | Map a function to each element of an array and its index.
+--
+{-# INLINE imap #-}
+imap :: (Int -> a -> b) -> Vector a -> Vector b
+imap = G.imap
+
+
+-- Zipping
+-- -------
+
+-- | Zip two vectors
+--
+{-# INLINE zip #-}
+zip :: Vector a -> Vector b -> Vector (a,b)
+zip = G.zip
+
+-- | Zip two vectors with the given function.
+--
+{-# INLINE zipWith #-}
+zipWith :: (a -> b -> c) -> Vector a -> Vector b -> Vector c
+zipWith = G.zipWith
+
+
+-- Reductions
+-- ----------
 
 -- | Reduce an array to a single value. The combination function must be an
 -- associative operation, and the stating element must be neutral with respect
@@ -42,11 +79,62 @@ map = G.map
 fold :: (a -> a -> a) -> a -> Vector a -> a
 fold = G.fold
 
-
 -- | A combination of 'map' followed by 'fold'. The same restrictions apply to
 -- the reduction operator and neutral element.
 --
 {-# INLINE foldMap #-}
 foldMap :: (a -> b) -> (b -> b -> b) -> b -> Vector a -> b
 foldMap = G.foldMap
+
+
+-- Specialised reductions
+-- ----------------------
+
+-- | Check if all elements satisfy the predicate
+--
+{-# INLINE all #-}
+all :: (a -> Bool) -> Vector a -> Bool
+all = G.all
+
+-- | Check if any element satisfies the predicate
+--
+{-# INLINE any #-}
+any :: (a -> Bool) -> Vector a -> Bool
+any = G.any
+
+-- | Check if all elements are True
+--
+{-# INLINE and #-}
+and :: Vector Bool -> Bool
+and = G.and
+
+-- | Check if any element is True
+--
+{-# INLINE or #-}
+or :: Vector Bool -> Bool
+or = G.or
+
+-- | Compute the sum of the elements
+--
+{-# INLINE sum #-}
+sum :: Num a => Vector a -> a
+sum = G.sum
+
+-- | Compute the product of the elements
+--
+{-# INLINE product #-}
+product :: Num a => Vector a -> a
+product = G.product
+
+-- | Yield the maximum element of a non-empty vector
+--
+{-# INLINE maximum #-}
+maximum :: Ord a => Vector a -> a
+maximum = G.maximum
+
+-- | Yield the minimum element of a non-empty vector
+--
+{-# INLINE minimum #-}
+minimum :: Ord a => Vector a -> a
+minimum = G.minimum
 
