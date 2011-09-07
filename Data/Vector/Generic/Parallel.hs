@@ -28,6 +28,8 @@ module Data.Vector.Generic.Parallel (
 
 ) where
 
+#define TRACE 0
+
 import           Prelude                                hiding (
   map, zip, zipWith, all, any, and, or, sum, product, maximum, minimum )
 import qualified Prelude                                as P
@@ -39,6 +41,13 @@ import           Data.Vector.Generic                    ( Vector )
 import qualified Data.Vector                            as V
 import qualified Data.Vector.Generic                    as G
 import qualified Data.Vector.Generic.Mutable            as M
+
+#if TRACE
+import           GHC.Conc                               ( myThreadId )
+import qualified GHC.Exts                               as T
+import qualified Debug.Trace                            as T
+#endif
+
 
 -- Construction
 -- ------------
@@ -228,6 +237,7 @@ instance Show a => Show (Dist a) where
 {-# INLINE_FUSE imapD #-}
 imapD :: (Vector v a, Vector v b) => (Int -> a -> b) -> Dist (v a) -> Dist (v b)
 imapD f (Dist s v) = unsafePerformIO $ do
+  _putTraceMsg $ "imapD [" ++ shows (G.length v) "]"
   mv <- M.unsafeNew (G.length v)
   runPar (parMap (fill mv) s) `seq` Dist s `fmap` G.unsafeFreeze mv
   where
@@ -251,6 +261,7 @@ imapD f (Dist s v) = unsafePerformIO $ do
 {-# INLINE_FUSE ifoldD #-}
 ifoldD :: Vector v b => (Int -> a -> b -> a) -> a -> Dist (v b) -> Dist (V.Vector a)
 ifoldD c z (Dist s v) = unsafePerformIO $ do
+  _putTraceMsg $ "ifoldD [" ++ shows (G.length v) "]"
   mv <- M.unsafeNew (length s)
   v' <- runPar (parMap (reduce mv) s) `seq` G.unsafeFreeze mv
   return $ split v'
@@ -317,18 +328,25 @@ auto_partition_factor = 4
 --
 -- Miscellaneous ---------------------------------------------------------------
 --
+_traceEvent  :: String -> IO ()
+_putTraceMsg :: String -> IO ()
+_trace       :: String -> a -> a
 
-#if 0
-putTraceMsg :: String -> IO ()
-putTraceMsg msg = do
+#if TRACE
+_traceEvent = T.traceEvent
+
+_putTraceMsg msg = do
   tid <- myThreadId
   T.putTraceMsg (shows tid ": " ++ msg)
 
-
-trace :: String -> a -> a
-trace s a =
+_trace s a =
   let tid = unsafePerformIO myThreadId
       {-# NOINLINE tid #-}
   in  T.trace (shows tid ": " ++ s) a
+
+#else
+_traceEvent  _ = return ()
+_putTraceMsg _ = return ()
+_trace _ x     = x
 #endif
 
