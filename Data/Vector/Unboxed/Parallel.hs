@@ -10,6 +10,9 @@
 
 module Data.Vector.Unboxed.Parallel (
 
+  -- * Construction
+  enumFromN, enumFromStepN,
+
   -- * Element-wise operations
   map, imap, zip, zipWith,
 
@@ -26,10 +29,28 @@ module Data.Vector.Unboxed.Parallel (
 
 import Prelude                                  ( Int, Bool, Num, Ord )
 import Data.Vector.Unboxed                      hiding (
+  enumFromN, enumFromStepN,
   map, imap, zip, zipWith,
   all, any, and, or, sum, product, maximum, minimum )
 import qualified Data.Vector.Unboxed            as U
 import qualified Data.Vector.Generic.Parallel   as G
+
+
+-- Construction
+-- ------------
+
+-- | Yield a vector of the given length containing the values @x@, @x+1@ etc.
+--
+{-# INLINE enumFromN #-}
+enumFromN :: (Unbox a, Num a) => a -> Int -> Vector a
+enumFromN = G.enumFromN
+
+-- | Yield a vector of the given values containing the values @x@, @x+y@,
+-- @x+y+y@, etc.
+--
+{-# INLINE enumFromStepN #-}
+enumFromStepN :: (Unbox a, Num a) => a -> a -> Int -> Vector a
+enumFromStepN = G.enumFromStepN
 
 
 -- Mapping

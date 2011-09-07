@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, FlexibleContexts #-}
+{-# LANGUAGE CPP, BangPatterns, FlexibleContexts, ScopedTypeVariables #-}
 -- |
 -- Module      : Data.Vector.Generic.Parallel
 -- Copyright   : [2011] Trevor L. McDonell
@@ -10,6 +10,9 @@
 --
 
 module Data.Vector.Generic.Parallel (
+
+  -- * Construction
+  enumFromN, enumFromStepN,
 
   -- * Element-wise operations
   map, imap, zip, zipWith,
@@ -36,6 +39,24 @@ import           Data.Vector.Generic                    ( Vector )
 import qualified Data.Vector                            as V
 import qualified Data.Vector.Generic                    as G
 import qualified Data.Vector.Generic.Mutable            as M
+
+-- Construction
+-- ------------
+
+-- | Yield a vector of the given length containing the values @x@, @x+1@ etc.
+--
+{-# INLINE enumFromN #-}
+enumFromN :: (Vector v a, Num a) => a -> Int -> v a
+enumFromN x n = enumFromStepN x 1 n
+
+-- | Yield a vector of the given values containing the values @x@, @x+y@,
+-- @x+y+y@, etc.
+--
+{-# INLINE enumFromStepN #-}
+enumFromStepN :: forall v a. (Vector v a, Num a, M.MVector (G.Mutable v) a) => a -> a -> Int -> v a
+enumFromStepN x y n =
+  let dummy = G.create (M.unsafeNew n) :: v a
+  in  imap (\i _ -> x + (fromIntegral i * y)) dummy
 
 
 -- Mapping
