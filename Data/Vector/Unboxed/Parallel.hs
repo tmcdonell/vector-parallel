@@ -28,6 +28,7 @@ import Prelude                                  ( Int, Bool, Num, Ord )
 import Data.Vector.Unboxed                      hiding (
   map, imap, zip, zipWith,
   all, any, and, or, sum, product, maximum, minimum )
+import qualified Data.Vector.Unboxed            as U
 import qualified Data.Vector.Generic.Parallel   as G
 
 
@@ -54,7 +55,7 @@ imap = G.imap
 --
 {-# INLINE zip #-}
 zip :: (Unbox a, Unbox b) => Vector a -> Vector b -> Vector (a,b)
-zip = G.zip
+zip = U.zip
 
 -- | Zip two vectors with the given function.
 --
